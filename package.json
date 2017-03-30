@@ -1,0 +1,23 @@
+{
+  "name": "shybyd",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JiaLiu/shybyd.git"
+  },
+  "author": "Jia Liu",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/JiaLiu/shybyd/issues"
+  },
+  "homepage": "https://github.com/JiaLiu/shybyd#readme",
+  "dependencies": {
+    "cheerio": "^0.22.0",
+    "superagent": "^3.5.2"
+  }
+}
