@@ -18,6 +18,8 @@
   "homepage": "https://github.com/JiaLiu/shybyd#readme",
   "dependencies": {
     "cheerio": "^0.22.0",
-    "superagent": "^3.5.2"
+    "lodash.some": "^4.6.0",
+    "superagent": "^3.5.2",
+    "superagent-charset": "^1.1.1"
   }
 }
