@@ -3,6 +3,8 @@ const request = charset(require('superagent'));
 const cheerio = require('cheerio');
 const some = require('lodash.some');
 const strigify = require('csv-stringify');
+const os = require("os");
+const fs = require("fs");
 
 function requestPage(method, configRequest) {
     let r = request(method || 'get', 'http://202.96.245.182/xxcx/ddyd.jsp').charset('gbk').retry(10);
@@ -37,22 +39,37 @@ const requestByQxcode = (qxcode, pageno) =>
     });
 
 requestPage()
-    .then($ => $('select[name="qxcode"] option[value]:not([value=""])').map((i, e) => $(e).attr("value")).get())
-    .then(qxcodes => Promise.all(
-        qxcodes.map(
-            qxcode => requestByQxcode(qxcode, 1)
-                .then($ => {
-                    const children = $('.yypages').children();
-                    const pageCount = +($(children[children.length - 2]).text());
-                    console.log('Page count: %d', pageCount);
-                    const promises = [];
-                    for (let i = 2; i <= pageCount; i++) {
-                        promises.push(requestByQxcode(qxcode, i));
-                    }
-                    return Promise.all(promises);
-                })
-        )
-    ))
-    .then(() => strigify(results, (err, output) => {
-        console.log(output);
-    }));
+    .then($ => {
+        let qxCodes = [], qxNames = [];
+        $('select[name="qxcode"] option[value]:not([value=""])')
+            .each(function () {
+                let e = $(this);
+                qxCodes.push(e.attr("value"));
+                qxNames.push(e.text().trim());
+            });
+
+        return [qxCodes, qxNames];
+    }).then(arrays => {
+        let qxNames = arrays[1].map((qxName, i) => i+"\t"+qxName);
+        fs.writeFile("districts.txt", qxNames.join(os.EOL), err => {
+            console.log("success");
+        });
+    });
+    // .then(qxcodes => Promise.all(
+    //     qxcodes.map(
+    //         qxcode => requestByQxcode(qxcode, 1)
+    //             .then($ => {
+    //                 const children = $('.yypages').children();
+    //                 const pageCount = +($(children[children.length - 2]).text());
+    //                 console.log('Page count: %d', pageCount);
+    //                 const promises = [];
+    //                 for (let i = 2; i <= pageCount; i++) {
+    //                     promises.push(requestByQxcode(qxcode, i));
+    //                 }
+    //                 return Promise.all(promises);
+    //             })
+    //     )
+    // ))
+    // .then(() => strigify(results, (err, output) => {
+    //     console.log(output);
+    // }));
