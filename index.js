@@ -6,55 +6,60 @@ const strigify = require('csv-stringify');
 const os = require("os");
 const fs = require("fs");
 
-function requestPage(method, configRequest) {
+async function requestPage(method, configRequest) {
     let r = request(method || 'get', 'http://202.96.245.182/xxcx/ddyd.jsp').charset('gbk').retry(10);
     if (configRequest) {
         r = configRequest(r);
     }
-    return r.then(res => cheerio.load(res.text));
+    let res = await r;
+
+    return await cheerio.load(res.text);
 }
 
-const results = [];
-const requestByQxcode = (qxcode, pageno) =>
-    requestPage("post", request => request.type('form').send({
+async function requestByQxcode(results, qxcode, pageno = 1) {
+    let $ = await requestPage("post", request => request.type('form').send({
         pageno,
         qxcode
-    })).then($ => {
-        let count = 0;
-        $('#main table:nth-of-type(2) tr').filter((i) => i % 2 === 1 && i > 1).each((i, tr) => {
-            const children = $(tr).children();
-            const object = {
-                district: $(children[0]).text().trim(),
-                name: $(children[1]).text().trim(),
-                address: $(children[2]).text().trim(),
-                comments: $(children[3]).text().trim()
-            };
-            if (!some(results, object)) {
-                results.push(object);
-                count++;
-            }
-        });
-        console.log("The page %d adds %d items", pageno, count);
-        return $;
-    });
-
-requestPage()
-    .then($ => {
-        let qxCodes = [], qxNames = [];
-        $('select[name="qxcode"] option[value]:not([value=""])')
-            .each(function () {
-                let e = $(this);
-                qxCodes.push(e.attr("value"));
-                qxNames.push(e.text().trim());
-            });
-
-        return [qxCodes, qxNames];
-    }).then(arrays => {
-        let qxNames = arrays[1].map((qxName, i) => i+"\t"+qxName);
-        fs.writeFile("districts.txt", qxNames.join(os.EOL), err => {
-            console.log("success");
+    }));
+    $('#main table:nth-of-type(2) tr').filter((i) => i % 2 === 1 && i > 1).each((i, tr) => {
+        const children = $(tr).children();
+        results.push({
+            name: $(children[1]).text().trim(),
+            address: $(children[2]).text().trim(),
+            comments: $(children[3]).text().trim()
         });
     });
+    return $;
+}
+
+(async () => {
+    console.log('Start...');
+    let $ = await requestPage();
+    let qxCodes = [], qxNames = [];
+    $('select[name="qxcode"] option[value]:not([value=""])').each(function () {
+        let e = $(this);
+        qxCodes.push(e.attr("value"));
+        qxNames.push(e.text().trim());
+    });
+    console.log('Get qx codes as %s', qxCodes);
+    console.log('Get qx names as %s', qxNames);
+    qxCodes.forEach(async (qxCode, i) => {
+        let qxName = qxNames[i];
+        console.log('Query page count for %s...', qxName);
+        let results = [];
+        let $ = await requestByQxcode(results, qxCode);
+        const children = $('.yypages').children();
+        const pageCount = +($(children[children.length - 2]).text());
+        console.log('%s has %d pages', qxName, pageCount);
+        for (let i = 2; i <= pageCount; i++) {
+            requestByQxcode(results, qxcode);
+        }
+    });
+
+    fs.writeFile("districts.txt", qxNames.map((qxName, i) => i + "\t" + qxName).join(os.EOL), err => {
+        console.log("success");
+    });
+})();
     // .then(qxcodes => Promise.all(
     //     qxcodes.map(
     //         qxcode => requestByQxcode(qxcode, 1)
