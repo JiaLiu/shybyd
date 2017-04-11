@@ -16,19 +16,24 @@ async function requestPage(method, configRequest) {
     return await cheerio.load(res.text);
 }
 
-async function requestByQxcode(results, qxcode, pageno = 1) {
+async function requestByQxcode(results, qxcode, qxName, district, pageno = 1) {    
+    console.log('Query page %d for %s...', pageno, qxName);
     let $ = await requestPage("post", request => request.type('form').send({
         pageno,
         qxcode
     }));
+    let count = 0;
     $('#main table:nth-of-type(2) tr').filter((i) => i % 2 === 1 && i > 1).each((i, tr) => {
         const children = $(tr).children();
         results.push({
             name: $(children[1]).text().trim(),
             address: $(children[2]).text().trim(),
-            comments: $(children[3]).text().trim()
+            comments: $(children[3]).text().trim(),
+            district
         });
+        count++;
     });
+    console.log('Add %d items from page %d for %s', count, pageno, qxName);
     return $;
 }
 
@@ -43,17 +48,19 @@ async function requestByQxcode(results, qxcode, pageno = 1) {
     });
     console.log('Get qx codes as %s', qxCodes);
     console.log('Get qx names as %s', qxNames);
-    qxCodes.forEach(async (qxCode, i) => {
-        let qxName = qxNames[i];
-        console.log('Query page count for %s...', qxName);
+    qxCodes.slice(0, 2).forEach(async (qxCode, index) => {
+        let qxName = qxNames[index];
         let results = [];
-        let $ = await requestByQxcode(results, qxCode);
+        let $ = await requestByQxcode(results, qxCode, qxName, index);
         const children = $('.yypages').children();
         const pageCount = +($(children[children.length - 2]).text());
         console.log('%s has %d pages', qxName, pageCount);
+        let promises = [];
         for (let i = 2; i <= pageCount; i++) {
-            requestByQxcode(results, qxcode);
+            promises.push(requestByQxcode(results, qxCode, qxName, index, i));
         }
+
+        await Promise.all(promises);
     });
 
     fs.writeFile("districts.txt", qxNames.map((qxName, i) => i + "\t" + qxName).join(os.EOL), err => {
