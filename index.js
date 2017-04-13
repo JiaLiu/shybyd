@@ -1,17 +1,14 @@
 const charset = require('superagent-charset');
 const request = charset(require('superagent'));
 const cheerio = require('cheerio');
-const stringify = require('csv-stringify');
-const fs = require("fs");
+const { store } = require('./mysql');
 
 async function requestPage(method, configRequest) {
     let r = request(method || 'get', 'http://202.96.245.182/xxcx/ddyd.jsp').charset('gbk').retry(10);
     if (configRequest) {
         r = configRequest(r);
     }
-    let res = await r;
-
-    return await cheerio.load(res.text);
+    return await cheerio.load((await r).text);
 }
 
 async function requestByQxcode(results, qxcode, qxName, district, pageno) {
@@ -33,18 +30,6 @@ async function requestByQxcode(results, qxcode, qxName, district, pageno) {
     });
     console.log('Add %d items from page %d for %s', count, pageno, qxName);
     return $;
-}
-
-function storeData(data, tableName) {
-    return new Promise((resolve, reject) => {
-        stringify(data, { delimiter: '\t' }, (err, output) => {
-            if (err) {
-                reject(err);
-            } else {
-                fs.writeFile(tableName + ".tsv", output, err => err ? reject(err) : resolve());
-            }
-        });
-    });
 }
 
 (async () => {
@@ -76,6 +61,6 @@ function storeData(data, tableName) {
         }
     }));
 
-    await Promise.all([storeData(qxNames.map((qxName, i) => [i + 1, qxName]), "district"), storeData(results.map((result, i) => [i + 1, result.name, result.address, result.comments, result.district]), "stores")]);
+    await store(qxNames, results);
     console.timeEnd("all");
 })();
