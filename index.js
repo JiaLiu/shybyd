@@ -1,7 +1,7 @@
 const charset = require('superagent-charset');
 const request = charset(require('superagent'));
 const cheerio = require('cheerio');
-const { store } = require('./mysql');
+const { store, end } = require('./mysql');
 
 async function requestPage(method, configRequest) {
     let r = request(method || 'get', 'http://202.96.245.182/xxcx/ddyd.jsp').charset('gbk').retry(10);
@@ -13,19 +13,21 @@ async function requestPage(method, configRequest) {
 
 async function requestByQxcode(results, qxcode, qxName, district, pageno) {
     console.log('Query page %d for %s...', pageno, qxName);
-    let $ = await requestPage("post", request => request.type('form').send({
+    const $ = await requestPage("post", request => request.type('form').send({
         pageno,
         qxcode
     }));
     let count = 0;
     $('#main table:nth-of-type(2) tr').filter((i) => i % 2 === 1 && i > 1).each((i, tr) => {
         const children = $(tr).children();
-        results.push({
-            name: $(children[1]).text().trim(),
-            address: $(children[2]).text().trim(),
-            comments: $(children[3]).text().trim(),
-            district
-        });
+        if (children.length === 4) {
+            results.push({
+                name: $(children[1]).text().trim(),
+                address: $(children[2]).text().trim(),
+                district
+            });
+        }
+
         count++;
     });
     console.log('Add %d items from page %d for %s', count, pageno, qxName);
@@ -34,11 +36,11 @@ async function requestByQxcode(results, qxcode, qxName, district, pageno) {
 
 (async () => {
     console.time("all");
-    let $ = await requestPage();
-    let qxCodes = [],
+    const $ = await requestPage();
+    const qxCodes = [],
         qxNames = [];
     $('select[name="qxcode"] option[value]:not([value=""])').each(function () {
-        let e = $(this);
+        const e = $(this);
         qxCodes.push(e.attr("value"));
         qxNames.push(e.text().trim());
     });
@@ -62,5 +64,6 @@ async function requestByQxcode(results, qxcode, qxName, district, pageno) {
     }));
 
     await store(qxNames, results);
+    await end();
     console.timeEnd("all");
 })();
