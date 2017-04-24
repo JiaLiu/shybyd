@@ -1,9 +1,8 @@
 const charset = require("superagent-charset");
 const request = charset(require("superagent"));
 const cheerio = require("cheerio");
-const { store, end } = require("./mysql");
-//&"C:\Program Files\MySQL\MySQL Server 5.7\bin\mysqlimport.exe" -u shybyd1 -p -L --delete shybyd .\districts.tsv .\sto
-res.tsv;
+const importMySQL = require("./importMySQL");
+
 async function requestPage(method, configRequest) {
   let r = request(method || "get", "http://202.96.245.182/xxcx/ddyd.jsp")
     .charset("gbk")
@@ -72,7 +71,6 @@ async function requestByQxcode(results, qxcode, qxName, district, pageno) {
     })
   );
 
-  await store(qxNames, results);
-  await end();
+  await importMySQL(qxNames, results);
   console.timeEnd("all");
 })();
