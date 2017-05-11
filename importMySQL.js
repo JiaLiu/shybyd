@@ -1,8 +1,9 @@
 const stringify = require("csv-stringify");
 const fs = require("fs");
 const { exec } = require("child_process");
+const { join } = require("path");
 
-module.exports = async function(qxNames, stores) {
+module.exports = async function(qxNames, stores, binPath, user, password) {
   const fileNames = await Promise.all(
     [
       [qxNames.map((qxName, i) => [i + 1, qxName]), "districts"],
@@ -35,8 +36,9 @@ module.exports = async function(qxNames, stores) {
   );
   await new Promise(resolve =>
     exec(
-      `"C:\\Program Files\\MySQL\\MySQL Server 5.7\\bin\\mysqlimport.exe" -u shybyd1 -p -L --delete shybyd ${fileNames.join(" ")}`,
+      `"${join(binPath, "mysqlimport")}" -u ${user} -p${password} -L --delete shybyd ${fileNames.join(" ")}`,
       err => {
+        fileNames.forEach(fs.unlinkSync);
         if (err) {
           throw err;
         }

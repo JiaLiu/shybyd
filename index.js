@@ -2,6 +2,7 @@ const charset = require("superagent-charset");
 const request = charset(require("superagent"));
 const cheerio = require("cheerio");
 const importMySQL = require("./importMySQL");
+const config = require("config");
 
 async function requestPage(method, configRequest) {
   let r = request(method || "get", "http://202.96.245.182/xxcx/ddyd.jsp")
@@ -71,6 +72,7 @@ async function requestByQxcode(results, qxcode, qxName, district, pageno) {
     })
   );
 
-  await importMySQL(qxNames, results);
+  const { bin, user, password } = config.get("mysql");
+  await importMySQL(qxNames, results, bin, user, password);
   console.timeEnd("all");
 })();
